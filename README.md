@@ -109,39 +109,97 @@ SELECT * FROM studenti;
 ```java
 package com.example.demo.entities;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "studenti")
 public class Studente {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer id;
 
-    @Column(name = "nome")
-    private String nome;
+	@Column(name = "nome")
+	private String nome;
 
-    @Column(name = "cognome")
-    private String cognome;
+	@Column(name = "cognome")
+	private String cognome;
 
-    @Column(name = "email")
-    private String email;
+	@Column(name = "email")
+	private String email;
 
-    @Column(name = "telefono")
-    private String telefono;
+	@Column(name = "telefono")
+	private String telefono;
 
-    // Relazione Many-to-One con corsi_laurea
+	// Relazione Many-to-One con corsi_laurea
     @ManyToOne
     @JoinColumn(name = "id_corso", nullable = false)
+    // @JsonManagedReference // Evita il loop
     private CorsoLaurea corsoLaurea;
 
     // Relazione Many-to-One con indirizzi
     @ManyToOne
     @JoinColumn(name = "indirizzo", nullable = false)
+    // @JsonManagedReference // Evita il loop
     private Indirizzo indirizzo;
 
-	// Getter e setter ...
+	public Integer getId() {
+		return id;
+	}
+
+	public void setId(Integer id) {
+		this.id = id;
+	}
+
+	public String getNome() {
+		return nome;
+	}
+
+	public void setNome(String nome) {
+		this.nome = nome;
+	}
+
+	public String getCognome() {
+		return cognome;
+	}
+
+	public void setCognome(String cognome) {
+		this.cognome = cognome;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public String getTelefono() {
+		return telefono;
+	}
+
+	public void setTelefono(String telefono) {
+		this.telefono = telefono;
+	}
+
+	public CorsoLaurea getCorsoLaurea() {
+		return corsoLaurea;
+	}
+
+	public void setCorsoLaurea(CorsoLaurea corsoLaurea) {
+		this.corsoLaurea = corsoLaurea;
+	}
+
+	public Indirizzo getIndirizzo() {
+		return indirizzo;
+	}
+
+	public void setIndirizzo(Indirizzo indirizzo) {
+		this.indirizzo = indirizzo;
+	}
 }
 ```
 
@@ -154,33 +212,84 @@ package com.example.demo.entities;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "indirizzi")
 public class Indirizzo {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer id;
 
-    @Column(name = "strada", length = 200)
-    private String strada;
+	@Column(name = "strada", length = 200)
+	private String strada;
 
-    @Column(name = "civico", length = 200)
-    private String civico;
+	@Column(name = "civico", length = 200)
+	private String civico;
 
-    @Column(name = "cap", length = 200)
-    private String cap;
+	@Column(name = "cap", length = 200)
+	private String cap;
 
-    @Column(name = "citta", length = 200)
-    private String citta;
+	@Column(name = "citta", length = 200)
+	private String citta;
 
-    // Relazione One-to-Many con Studente (lato non proprietario)
-    @OneToMany(mappedBy = "indirizzo", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Studente> studenti = new ArrayList<>();
+	// Relazione One-to-Many con Studente (lato non proprietario)
+	@OneToMany(mappedBy = "indirizzo", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	@JsonIgnore // Evita serializzazione ciclica
+	private List<Studente> studenti = new ArrayList<>();
 
-	// Getter e setter ...
+	public Integer getId() {
+		return id;
+	}
+
+	public void setId(Integer id) {
+		this.id = id;
+	}
+
+	public String getStrada() {
+		return strada;
+	}
+
+	public void setStrada(String strada) {
+		this.strada = strada;
+	}
+
+	public String getCivico() {
+		return civico;
+	}
+
+	public void setCivico(String civico) {
+		this.civico = civico;
+	}
+
+	public String getCap() {
+		return cap;
+	}
+
+	public void setCap(String cap) {
+		this.cap = cap;
+	}
+
+	public String getCitta() {
+		return citta;
+	}
+
+	public void setCitta(String citta) {
+		this.citta = citta;
+	}
+
+	public List<Studente> getStudenti() {
+		return studenti;
+	}
+
+	public void setStudenti(List<Studente> studenti) {
+		this.studenti = studenti;
+	}
 }
 ```
 
@@ -193,27 +302,62 @@ package com.example.demo.entities;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "corsi_laurea")
 public class CorsoLaurea {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer id;
 
-    @Column(name = "anno")
-    private Integer anno;
+	@Column(name = "anno")
+	private Integer anno;
 
-    @Column(name = "facolta", length = 200)
-    private String facolta;
+	@Column(name = "facolta", length = 200)
+	private String facolta;
 
-    // Relazione One-to-Many con Studente (lato non proprietario)
-    @OneToMany(mappedBy = "corsoLaurea", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Studente> studenti = new ArrayList<>();
+	// Relazione One-to-Many con Studente (lato non proprietario)
+	@OneToMany(mappedBy = "corsoLaurea", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	@JsonIgnore // Evita serializzazione ciclica
+	private List<Studente> studenti = new ArrayList<>();
 
-	// Getter e setter ...
+	public Integer getId() {
+		return id;
+	}
+
+	public void setId(Integer id) {
+		this.id = id;
+	}
+
+	public Integer getAnno() {
+		return anno;
+	}
+
+	public void setAnno(Integer anno) {
+		this.anno = anno;
+	}
+
+	public String getFacolta() {
+		return facolta;
+	}
+
+	public void setFacolta(String facolta) {
+		this.facolta = facolta;
+	}
+
+	public List<Studente> getStudenti() {
+		return studenti;
+	}
+
+	public void setStudenti(List<Studente> studenti) {
+		this.studenti = studenti;
+	}
 }
 ```
 

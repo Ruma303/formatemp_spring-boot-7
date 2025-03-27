@@ -25,16 +25,16 @@ public class Studente {
 	private String telefono;
 
 	// Relazione Many-to-One con corsi_laurea
-	@ManyToOne
-	@JoinColumn(name = "id_corso", nullable = false)
-	// @JsonManagedReference // Evita il loop
-	private CorsoLaurea corsoLaurea;
+    @ManyToOne
+    @JoinColumn(name = "id_corso", nullable = false)
+    // @JsonManagedReference // Evita il loop
+    private CorsoLaurea corsoLaurea;
 
-	// Relazione Many-to-One con indirizzi
-	@ManyToOne
-	@JoinColumn(name = "indirizzo", nullable = false)
-	// @JsonManagedReference // Evita il loop
-	private Indirizzo indirizzo;
+    // Relazione Many-to-One con indirizzi
+    @ManyToOne
+    @JoinColumn(name = "indirizzo", nullable = false)
+    // @JsonManagedReference // Evita il loop
+    private Indirizzo indirizzo;
 
 	public Integer getId() {
 		return id;
