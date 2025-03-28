@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import org.mindrot.jbcrypt.BCrypt;
 
-
 @Entity
 @Table(name = "studenti")
 public class Studente {
@@ -103,10 +102,14 @@ public class Studente {
 	public String getPassword() {
 		return password; 
 	}
-
+	
 	public void setPassword(String password) {
-		this.password = BCrypt.hashpw(password, BCrypt.gensalt());
+		this.password = password;
 	}
+
+//	public void setPassword(String password) {
+//		this.password = BCrypt.hashpw(password, BCrypt.gensalt());
+//	}
 
 	public Boolean getAttivo() {
 		return attivo;

@@ -843,7 +843,7 @@ POST http://localhost:8080/api/studenti/
 
 # **Criptazione password**
 
-Aggiorniamo la tabella `studenti` con un paio di campi: `password` e `active`.
+Aggiorniamo la tabella `studenti` con un paio di campi: `password` e `active`. Il nostro scopo sarà criptare la password per evitare di salvarla in chiaro, e rendere l'applicazione più sicura.
 
 ```sql
 ALTER TABLE studenti ADD COLUMN password longtext NULL AFTER email;
@@ -869,7 +869,13 @@ mysql> describe studenti;
 +-----------+--------------+------+-----+---------+----------------+
 ```
 
-Per **hashare la password** usiamo al momento la classe `BCrypt`. Installiamo la dipendenza Maven:
+---
+
+## **Alternativa 1: BCrypt**
+
+Per **hashare la password** abbiamo numerose alternative. Al momento non usiamo **Spring Security**, ma possiamo raggiungere lo stesso risultato con un paio di tecniche.
+
+Il primo metodo è l'uso della classe `BCrypt`. Installiamo la dipendenza Maven:
 
 ```xml
 <dependency>
@@ -913,3 +919,166 @@ Vedremo che la password verrà hashata. Esempio:
 ```json
 "password": "$2a$10$iMSmtpz1YP3hAvzWr.iFd.SdyTccMcRi96aWRi7F61uYpHcCTveKa",
 ```
+
+---
+
+## **Alternativa 2: PasswordEncoder**
+
+In maniera molto simile possiamo usare un'altra dipendenza, `PasswordEncoder`. Installiamo la dipendenza Maven. Questa fa parte del pacchetto Spring Security, ma non prendiamo l'intera libreria, ma soltanto una piccola dipendenza chiamata `spring-security.crypto` che è adatta al nostro scopo.
+
+```xml
+<dependency>
+	<groupId>org.springframework.security</groupId>
+	<artifactId>spring-security-crypto</artifactId>
+</dependency>
+```
+
+### **Classe `SecurityConfig`**
+
+Questa volta definiremo una nuova classe (o interfaccia volendo) chiamata `SecurityConfig` all'interno del package `...configs`. Ciò ci consentirà di riutilizzare il codice nei services o altrove, in più punti dell'applicazione.
+
+Questa classe definisce un **Bean** per la gestione della codifica delle password:
+
+```java
+package com.example.demo.configs;
+
+import org.springframework.context.annotation.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+```
+
+#### **Spiegazione delle Annotazioni**
+
+- `@Configuration`: indica che questa classe è una classe di configurazione, cioè una classe che dichiara Bean per il contesto di Spring.
+
+- `@Bean`: indica che il metodo `passwordEncoder()` deve essere gestito da Spring come un Bean.
+
+#### **Cos'è un Bean in Spring?**
+
+Un **Bean** in Spring è un oggetto gestito dal container di Spring. Viene creato, configurato e gestito automaticamente dal framework. I Bean sono definiti nelle classi annotate con `@Configuration` o in componenti annotati con `@Component`, `@Service`, `@Repository`, ecc.
+
+In sostanza, **un Bean è un'istanza di una classe che viene resa disponibile nel contesto applicativo di Spring per essere riutilizzata ovunque serva senza doverla istanziare manualmente ogni volta**.
+
+#### **Cosa fa questa classe?**
+
+- Definisce un **Bean di tipo `PasswordEncoder`**.
+
+- Il metodo `passwordEncoder()` restituisce un'istanza di `BCryptPasswordEncoder`, che è un'implementazione di `PasswordEncoder` utilizzata per codificare e verificare le password in modo sicuro.
+
+Quando l'applicazione viene avviata, Spring rileva questa configurazione e rende disponibile un'istanza di `BCryptPasswordEncoder` ovunque venga richiesta come dipendenza.
+
+---
+
+### **Usare il bean `PasswordEncoder` nel `StudentService`**
+
+Nel service `StudenteService`, abbiamo iniettato `PasswordEncoder` (tramite `@Autowired`, ma è opzionale) per codificare le password prima di salvarle nel database:
+
+```java
+package com.example.demo.services;
+
+import java.util.List;
+import java.util.Optional;
+import com.example.demo.entities.*;
+import com.example.demo.repositories.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+public class StudenteService {
+
+    private final StudenteRepository sr;
+    private final CorsoLaureaRepository clr;
+    private final IndirizzoRepository ir;
+    private final PasswordEncoder pe;
+
+    @Autowired
+    public StudenteService(StudenteRepository sr,
+    					   CorsoLaureaRepository clr,
+                           IndirizzoRepository ir,
+                           PasswordEncoder pe
+    ) {
+        this.sr = sr;
+        this.clr = clr;
+        this.ir = ir;
+        this.pe = pe;
+    }
+
+    public List<Studente> all() {
+        return sr.findAll();
+    }
+
+    public Optional<Studente> get(int id) {
+        return sr.findById(id);
+    }
+
+    public Studente add(Studente studente) {
+        CorsoLaurea corso = clr.findById(studente.getCorsoLaurea().getId())
+                .orElseThrow(() -> new RuntimeException("Corso non trovato"));
+        Indirizzo indirizzo = ir.findById(studente.getIndirizzo().getId())
+                .orElseThrow(() -> new RuntimeException("Indirizzo non trovato"));
+
+        studente.setCorsoLaurea(corso);
+        studente.setIndirizzo(indirizzo);
+
+        if (studente.getPassword() != null && !studente.getPassword().isEmpty()) {
+            studente.setPassword(pe.encode(studente.getPassword()));
+        }
+
+        return sr.save(studente);
+    }
+
+    public Studente update(Studente studente, int id) {
+        Studente existingStudente = sr.findById(id)
+                .orElseThrow(() -> new RuntimeException("Studente non trovato"));
+
+        if (studente.getNome() != null) {
+            existingStudente.setNome(studente.getNome());
+        }
+        if (studente.getCognome() != null) {
+            existingStudente.setCognome(studente.getCognome());
+        }
+        if (studente.getEmail() != null) {
+            existingStudente.setEmail(studente.getEmail());
+        }
+        if (studente.getTelefono() != null) {
+            existingStudente.setTelefono(studente.getTelefono());
+        }
+        if (studente.getPassword() != null && !studente.getPassword().isEmpty()) {
+            existingStudente.setPassword(pe.encode(studente.getPassword()));
+        }
+        if (studente.getAttivo() != null) {
+            existingStudente.setAttivo(studente.getAttivo());
+        }
+        if (studente.getCorsoLaurea() != null) {
+            CorsoLaurea corso = clr.findById(studente.getCorsoLaurea().getId())
+                    .orElseThrow(() -> new RuntimeException("Corso non trovato"));
+            existingStudente.setCorsoLaurea(corso);
+        }
+        if (studente.getIndirizzo() != null) {
+            Indirizzo indirizzo = ir.findById(studente.getIndirizzo().getId())
+                    .orElseThrow(() -> new RuntimeException("Indirizzo non trovato"));
+            existingStudente.setIndirizzo(indirizzo);
+        }
+
+        return sr.save(existingStudente);
+    }
+
+    public void delete(int id) {
+        sr.deleteById(id);
+    }
+}
+```
+
+- Grazie all'**iniezione delle dipendenze**, non creiamo manualmente un'istanza di `BCryptPasswordEncoder`, ma usiamo direttamente quella gestita da Spring.
+
+- Quando si crea un nuovo `Studente`, il metodo `pe.encode(studente.getPassword())` converte la password in una stringa cifrata prima di salvarla nel database.
