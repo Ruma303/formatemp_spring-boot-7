@@ -3,6 +3,8 @@ package com.example.demo.controllers;
 import java.util.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import com.example.demo.dtos.StudenteDto;
 import com.example.demo.entities.Studente;
 import com.example.demo.services.StudenteService;
 
@@ -22,6 +24,11 @@ public class StudenteController {
 	public Optional<Studente> get(@PathVariable int id) {
 		return ss.get(id);
 	}
+	
+	@GetMapping("/dto")
+    public List<StudenteDto> allDto() {
+        return ss.allDto();
+    }
 
 	@PostMapping("/")
 	public Studente create(@RequestBody Studente studente) {

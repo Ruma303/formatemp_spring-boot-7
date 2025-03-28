@@ -814,7 +814,7 @@ public class IndirizzoController {
 
 ---
 
-# **Richieste**
+# **Richieste HTTP**
 
 le richieste HTTP sono le classiche.
 
@@ -841,7 +841,7 @@ POST http://localhost:8080/api/studenti/
 
 ---
 
-# **Criptazione password**
+# **Aggiunte: Criptazione password**
 
 Aggiorniamo la tabella `studenti` con un paio di campi: `password` e `active`. Il nostro scopo sarà criptare la password per evitare di salvarla in chiaro, e rendere l'applicazione più sicura.
 
@@ -1082,3 +1082,273 @@ public class StudenteService {
 - Grazie all'**iniezione delle dipendenze**, non creiamo manualmente un'istanza di `BCryptPasswordEncoder`, ma usiamo direttamente quella gestita da Spring.
 
 - Quando si crea un nuovo `Studente`, il metodo `pe.encode(studente.getPassword())` converte la password in una stringa cifrata prima di salvarla nel database.
+
+---
+
+# **Filtrare i campi con le classi DTO**
+
+Non è una buona pratica mostrare la password all'utente finale, anche se è la sua e anche se è criptata. La comunicazione potrebbe essere comunque intercettata, e anche se le chance sono infinitesime, ma anche le password hashate potrebbero essere forzate.
+
+Il nostro scopo è quindi filtrare i campi da inviare al client. Nel nostro caso, ci basta ritornare tutti i campi tranne la `password`.
+
+Di seguito viene mostrata una possibile implementazione di una classe DTO (Data Transfer Object) per la classe Studente, che esclude il campo password, insieme a un esempio di mapping manuale da `Studente` a `StudenteDto`.
+
+---
+
+## **1. Creazione della classe StudenteDto**
+
+La classe DTO serve a definire la struttura dei dati che vuoi inviare al frontend, escludendo campi sensibili (come la password) o quelli non necessari. Ad esempio:
+
+```java
+package com.example.demo.dtos;
+
+public class StudenteDto {
+
+	private Integer id;
+	private String nome;
+	private String cognome;
+	private String email;
+	private String telefono;
+	private Boolean attivo;
+
+	// Se desiderassimo includere informazioni relative alle relazioni,
+	// possiamo aggiungere anche gli ID o dei DTO dedicati per CorsoLaurea e Indirizzo.
+	private Integer idCorsoLaurea;
+	private Integer idIndirizzo;
+
+	// Costruttore senza argomenti
+	public StudenteDto() {
+	}
+
+	// Costruttore con argomenti
+	public StudenteDto(Integer id, String nome, String cognome, String email, String telefono, Boolean attivo,
+			Integer idCorsoLaurea, Integer idIndirizzo) {
+		this.id = id;
+		this.nome = nome;
+		this.cognome = cognome;
+		this.email = email;
+		this.telefono = telefono;
+		this.attivo = attivo;
+		this.idCorsoLaurea = idCorsoLaurea;
+		this.idIndirizzo = idIndirizzo;
+	}
+
+	// Getters e Setters
+
+	public Integer getId() {
+		return id;
+	}
+
+	public void setId(Integer id) {
+		this.id = id;
+	}
+
+	public String getNome() {
+		return nome;
+	}
+
+	public void setNome(String nome) {
+		this.nome = nome;
+	}
+
+	public String getCognome() {
+		return cognome;
+	}
+
+	public void setCognome(String cognome) {
+		this.cognome = cognome;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public String getTelefono() {
+		return telefono;
+	}
+
+	public void setTelefono(String telefono) {
+		this.telefono = telefono;
+	}
+
+	public Boolean getAttivo() {
+		return attivo;
+	}
+
+	public void setAttivo(Boolean attivo) {
+		this.attivo = attivo;
+	}
+
+	public Integer getIdCorsoLaurea() {
+		return idCorsoLaurea;
+	}
+
+	public void setIdCorsoLaurea(Integer idCorsoLaurea) {
+		this.idCorsoLaurea = idCorsoLaurea;
+	}
+
+	public Integer getIdIndirizzo() {
+		return idIndirizzo;
+	}
+
+	public void setIdIndirizzo(Integer idIndirizzo) {
+		this.idIndirizzo = idIndirizzo;
+	}
+}
+```
+
+---
+
+## **2. Mapping da Studente a StudenteDto**
+
+Una volta definito il DTO, il passo successivo è convertire un oggetto Studente in StudenteDto. Questo mapping può essere fatto in modo manuale nel service o in un'apposita classe di mapping. Ecco un esempio di metodo di conversione nel service:
+
+```java
+package com.example.demo.services;
+
+import java.util.stream.Collectors;
+import com.example.demo.dtos.StudenteDto;
+import com.example.demo.entities.Studente;
+// Altri import
+
+@Service
+public class StudenteService {
+    // ... altri metodi e dipendenze
+
+    // Metodo di mapping da Studente a StudenteDto
+    public StudenteDto convertToDto(Studente studente) {
+        StudenteDto dto = new StudenteDto();
+        dto.setId(studente.getId());
+        dto.setNome(studente.getNome());
+        dto.setCognome(studente.getCognome());
+        dto.setEmail(studente.getEmail());
+        dto.setTelefono(studente.getTelefono());
+        dto.setAttivo(studente.getAttivo());
+        // Assumiamo che nelle relazioni Studente abbia metodi per recuperare gli ID
+        dto.setIdCorsoLaurea(studente.getCorsoLaurea() != null ? studente.getCorsoLaurea().getId() : null);
+        dto.setIdIndirizzo(studente.getIndirizzo() != null ? studente.getIndirizzo().getId() : null);
+        return dto;
+    }
+
+    // Esempio di metodo che restituisce tutti gli studenti come DTO
+    public List<StudenteDto> allDto() {
+        return sr.findAll().stream().map(this::convertToDto).collect(Collectors.toList());
+    }
+}
+```
+
+>**NB**: in base a ciò che vorremmo inviare al frontend potremmo usare il metodo `all()` che ritorna tutti gli studenti con le password, oppure `allDto()` che non mostra le password.
+
+### **Approfondimento `allDto()`**
+
+```java
+public List<StudenteDto> allDto() {
+    return sr.findAll()                       // Recupera tutti gli studenti dal database come List<Studente>
+             .stream()                        // Converte la lista in uno stream per operazioni funzionali
+             .map(this::convertToDto)         // Applica il metodo convertToDto a ogni elemento dello stream
+             .collect(Collectors.toList());   // Raccoglie il risultato in una lista di StudenteDto
+}
+```
+
+
+```java
+sr.findAll()
+```
+
+- Questo metodo del repository JPA (`JpaRepository`) recupera tutti gli studenti dal database come `List<Studente>`.
+
+- Restituisce una **lista** di entità `Studente`.
+
+```java
+.stream()
+```
+
+- Converte la lista in uno **Stream** di oggetti `Studente`.
+
+- Uno stream in Java è un flusso di dati su cui si possono applicare operazioni funzionali come `map`, `filter`, `forEach`, ecc.
+
+- **Gli stream non modificano i dati originali**, ma generano un nuovo risultato.
+
+```java
+.map(this::convertToDto)
+```
+
+- `map()` è un'operazione intermedia che **trasforma** ogni elemento dello stream.
+
+- In questo caso, `this::convertToDto` è un **method reference** che equivale a scrivere:
+
+```java
+.map(studente -> convertToDto(studente))
+```
+
+- **Per ogni elemento dello stream** (`Studente`), chiama `convertToDto(studente)`, trasformandolo in un `StudenteDto`.
+
+```java
+.collect(Collectors.toList())
+```
+
+- `collect()` è un'operazione **terminale** che raccoglie il risultato dello stream in una nuova struttura dati.
+
+- `Collectors.toList()` specifica che vogliamo una **Lista** come risultato.
+
+---
+
+## **3. Utilizzo del DTO nel Controller**
+
+Infine, nel controller potresti avere un endpoint che restituisce gli studenti come DTO, ad esempio:
+
+```java
+@RestController
+@RequestMapping("/api/studenti")
+public class StudenteController {
+
+    @Autowired
+    private StudenteService ss;
+
+    @GetMapping("/dto")
+    public List<StudenteDto> allDto() {
+        return ss.allDto();
+    }
+}
+```
+
+---
+
+## **4. Richieste HTTP**
+
+Eseguiamo una richiesta per testare l'endpoint:
+
+```http
+GET http://localhost:8080/api/studenti/dto
+```
+
+Possiamo vedere che la collection JSON ritornata nel frontend non contiene più il campo `password`.
+
+```json
+[
+    {
+        "id": 1,
+        "nome": "Mario",
+        "cognome": "Rossi",
+        "email": "mario.rossi@example.com",
+        "telefono": "3331111111",
+        "attivo": true,
+        "idCorsoLaurea": 1,
+        "idIndirizzo": 1
+    },
+    {
+        "id": 2,
+        "nome": "Luigi",
+        "cognome": "Verdi",
+        "email": "luigi.verdi@example.com",
+        "telefono": "3332222222",
+        "attivo": true,
+        "idCorsoLaurea": 2,
+        "idIndirizzo": 2
+    } //...
+]
+```
