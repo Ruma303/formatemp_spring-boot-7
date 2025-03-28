@@ -66,6 +66,12 @@ public class StudenteService {
 		if (studente.getTelefono() != null) {
 			existingStudente.setTelefono(studente.getTelefono());
 		}
+		if (studente.getPassword() != null) {
+			existingStudente.setPassword(studente.getPassword());
+		}
+		if (studente.getAttivo() != null) {
+			existingStudente.setAttivo(studente.getAttivo());
+		}
 		if (studente.getCorsoLaurea() != null) {
 			CorsoLaurea corso = corsoLaureaRepository.findById(studente.getCorsoLaurea().getId())
 					.orElseThrow(() -> new RuntimeException("Corso non trovato"));

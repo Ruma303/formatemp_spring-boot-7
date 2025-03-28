@@ -3,6 +3,8 @@ package com.example.demo.entities;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.*;
+import org.mindrot.jbcrypt.BCrypt;
+
 
 @Entity
 @Table(name = "studenti")
@@ -21,8 +23,14 @@ public class Studente {
 	@Column(name = "email")
 	private String email;
 
+	@Column(name = "password")
+	private String password;
+
 	@Column(name = "telefono")
 	private String telefono;
+	
+	@Column(name = "attivo")
+	private Boolean attivo;
 
 	// Relazione Many-to-One con corsi_laurea
     @ManyToOne
@@ -90,6 +98,22 @@ public class Studente {
 
 	public void setIndirizzo(Indirizzo indirizzo) {
 		this.indirizzo = indirizzo;
+	}
+
+	public String getPassword() {
+		return password; 
+	}
+
+	public void setPassword(String password) {
+		this.password = BCrypt.hashpw(password, BCrypt.gensalt());
+	}
+
+	public Boolean getAttivo() {
+		return attivo;
+	}
+
+	public void setAttivo(Boolean attivo) {
+		this.attivo = attivo;
 	}
 
 }

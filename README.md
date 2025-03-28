@@ -104,6 +104,8 @@ SELECT * FROM studenti;
 
 # **Entities**
 
+>**PS**: Il compromesso migliore per poter eseguire tutte le richieste HTTP senza avere loop di serializzazione è usare soltanto l'annotazione `@JsonIgnore` nelle tabelle secondarie.
+
 ## **Studente**
 
 ```java
@@ -381,6 +383,8 @@ public interface StudenteRepository extends JpaRepository<Studente, Integer> {
 }
 ```
 
+---
+
 ## **IndirizzoRepository**
 
 ```java
@@ -508,6 +512,8 @@ public class StudenteService {
 }
 ```
 
+---
+
 ## **IndirizzoService**
 
 ```java
@@ -570,6 +576,8 @@ public class IndirizzoService {
     }
 }
 ```
+
+---
 
 ## **CorsoLaureaService**
 
@@ -804,7 +812,6 @@ public class IndirizzoController {
 }
 ```
 
-
 ---
 
 # **Richieste**
@@ -830,4 +837,79 @@ POST http://localhost:8080/api/studenti/
     "corsoLaurea": {"id": 4},
     "indirizzo": {"id": 2}
 }
+```
+
+---
+
+# **Criptazione password**
+
+Aggiorniamo la tabella `studenti` con un paio di campi: `password` e `active`.
+
+```sql
+ALTER TABLE studenti ADD COLUMN password longtext NULL AFTER email;
+ALTER TABLE studenti ADD COLUMN attivo INT(1) NULL AFTER telefono;
+```
+
+La tabella `studenti` aggiornata sarà:
+
+```sql
+mysql> describe studenti;
++-----------+--------------+------+-----+---------+----------------+
+| Field     | Type         | Null | Key | Default | Extra          |
++-----------+--------------+------+-----+---------+----------------+
+| id        | int          | NO   | PRI | NULL    | auto_increment |
+| nome      | varchar(255) | YES  |     | NULL    |                |
+| cognome   | varchar(255) | YES  |     | NULL    |                |
+| email     | varchar(255) | YES  |     | NULL    |                |
+| password  | longtext     | YES  |     | NULL    |                |
+| telefono  | varchar(255) | YES  |     | NULL    |                |
+| active    | int          | YES  |     | 1       |                |
+| id_corso  | int          | NO   | MUL | NULL    |                |
+| indirizzo | int          | NO   | MUL | NULL    |                |
++-----------+--------------+------+-----+---------+----------------+
+```
+
+Per **hashare la password** usiamo al momento la classe `BCrypt`. Installiamo la dipendenza Maven:
+
+```xml
+<dependency>
+	<groupId>org.mindrot</groupId>
+	<artifactId>jbcrypt</artifactId>
+	<version>0.4</version>
+</dependency>
+```
+
+Nell'entity `Studente` aggiungiamo i campi. In particolare, la password verrà hashata nel setter.
+
+```java
+import org.mindrot.jbcrypt.BCrypt;
+
+public void setPassword(String password) {
+	this.password = BCrypt.hashpw(password, BCrypt.gensalt());
+}
+```
+
+ Usiamo i metodi:
+- `BCrypt.hashpw()` per hashare la password. Questo metodo richiede due parametri: la password da hashare e il "sale" per rendere ancora più univoca la password.
+- Il sale è essenzialmente una stringa che si aggiunge alla password hashata. Possiamo scrivere una stringa letterale, ma è ovviamente consigliato usare il metodo della classe `BCrypt.gensalt()` per generare un sale hashato e più sicuro.
+
+Non ci resta che fare qualche test con le API. Esempio di una richiesta POST:
+
+```json
+{
+    "nome": "Tizio",
+    "cognome": "Caio",
+    "email": "tizio@caio.com",
+    "password": "pippo",
+    "telefono": "32431677461",
+    "attivo": 1,
+    "corsoLaurea": {"id": 4},
+    "indirizzo": {"id": 2}
+}
+```
+
+Vedremo che la password verrà hashata. Esempio:
+
+```json
+"password": "$2a$10$iMSmtpz1YP3hAvzWr.iFd.SdyTccMcRi96aWRi7F61uYpHcCTveKa",
 ```
